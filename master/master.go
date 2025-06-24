@@ -200,9 +200,7 @@ func (m *Master) SubmitJob(ctx context.Context, req *pb.SubmitJobRequest) (*pb.S
 	job.ReduceTasks = m.CreateReduceTasks(job)
 	m.jobs[req.JobId] = job
 
-	for _, task := range job.MapTasks {
-		m.pendingTasks = append(m.pendingTasks, task)
-	}
+	m.pendingTasks = append(m.pendingTasks, job.MapTasks...)
 	job.Status = "running"
 	return &pb.SubmitJobResponse{
 		Accepted: true,
@@ -241,7 +239,7 @@ func (m *Master) GetJobStatus(ctx context.Context, req *pb.JobStatusRequest) (*p
 	}, nil
 }
 
-func (m *Master) createMapTasks(job *Job) []*pb.Task {
+func (m *Master) CreateMapTasks(job *Job) []*pb.Task {
 	tasks := []*pb.Task{}
 
 	for i, inputFile := range job.InputFiles {
@@ -364,7 +362,7 @@ func (m *Master) checkWorkerHealth() {
 			worker.IsAlive = false
 
 			if worker.CurrentTask != nil {
-				log.Printf("Rescheduling task %s of dead worker %d", worker.CurrentTask.TaskId, worker.ID)
+				log.Printf("rescheduling task %s of dead worker %d", worker.CurrentTask.TaskId, worker.ID)
 				delete(m.runningTasks, worker.CurrentTask.TaskId)
 				m.rescheduleTask(worker.CurrentTask)
 				worker.CurrentTask = nil

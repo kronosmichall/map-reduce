@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"mapreduce/constants"
+
 	pb "mapreduce/proto"
 
 	"google.golang.org/grpc"
@@ -62,7 +63,7 @@ func NewWorker(id string, masterAddress string, port int) *Worker {
 		ID:            id,
 		masterAddress: masterAddress,
 		port:          port,
-		workDir:       fmt.Sprintf("/tmt/worker-%s", id),
+		workDir:       fmt.Sprintf("/tmp/worker-%s", id),
 		shutdownChan:  make(chan struct{}),
 	}
 }
@@ -101,7 +102,7 @@ func (w *Worker) registerWithMaster() error {
 // TODO: send in the function name
 func (w *Worker) Start(mapFunc MapFunction, reduceFunc ReduceFunction) error {
 	if err := os.MkdirAll(w.workDir, 0o755); err != nil {
-		return fmt.Errorf("Worker %s failed to create work direcory", w.ID)
+		return fmt.Errorf("Worker %s failed to create work direcory; %v", w.ID, err)
 	}
 
 	if err := w.connectToMaster(); err != nil {
@@ -402,13 +403,10 @@ func (w *Worker) Shutdown() {
 }
 
 func main() {
-	if len(os.Args) != 4 {
-		log.Fatal("Usage: worker <worker-id> <master-address> <port>")
-	}
-	
 	workerID := flag.String("id", "", "worker id")
 	masterAddress := flag.String("maddr", "", "master address")
 	port := flag.Int("port", 0, "worker port")
+	flag.Parse()
 
 	if *workerID == "" {
 		log.Fatalf("Pass -id arg")
@@ -419,7 +417,7 @@ func main() {
 	if *port == 0 {
 		log.Fatalf("pass -port arg")
 	}
-	
+
 	worker := NewWorker(*workerID, *masterAddress, *port)
 	if err := worker.Start(wordCountMap, wordCountReduce); err != nil {
 		log.Fatalf("Worker failed: %v", err)
